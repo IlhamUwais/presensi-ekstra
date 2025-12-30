@@ -19,36 +19,37 @@ class RoomEkstraForm
                         TextInput::make('name')
                             ->label('Nama Ruangan / Titik Kumpul')
                             ->required(),
-                        
+
                         TextInput::make('location')
                             ->label('Deskripsi Lokasi')
                             ->placeholder('Contoh: Depan Tiang Bendera'),
-                            
+
                     ]),
 
                 Section::make('Titik Koordinat (Geofencing)')
                     ->description('Tentukan titik pusat lokasi dan jarak radius absen.')
                     ->schema([
-                        
+
                         // --- MAP PICKER ---
                         Map::make('location_map')
-                            ->label('Pilih Lokasi (Satelit + Nama)')
+                            ->label('Pilih Lokasi (Satelit + Nama)') // (VISUAL) Admin memilih titik pusat lokasi absen di peta ini.
                             ->columnSpanFull()
-                            
+
                             // 1. Lokasi Default (Magelang)
                             ->defaultLocation(-7.4726, 110.2198)
 
                             // 2. LINK GOOGLE HYBRID (Satelit + Jalan)
                             // Ini satu-satunya cara biar muncul nama jalan di mode satelit
                             ->tilesUrl('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}')
-                            
+
                             // 3. Setting Standar (Tanpa kode aneh-aneh)
-                            ->zoom(18)           
-                            ->draggable()       
-                            ->dehydrated(false)  
-                            
+                            ->zoom(18)
+                            ->draggable()
+                            ->dehydrated(false)
+
                             // 4. Logic Load Data (Edit Mode)
                             ->afterStateHydrated(function ($state, $record, callable $set) {
+                                // (LOAD DATA) Jika sedang edit, ambil koordinat dari database lalu pasang pin di peta.
                                 if ($record) {
                                     $set('location_map', [
                                         'lat' => (float) $record->latitude,
@@ -58,10 +59,9 @@ class RoomEkstraForm
                             })
                             // 5. Logic Update Input (Saat marker digeser)
                             ->afterStateUpdated(function (callable $set, array $state) {
+                                // (SINKRONISASI) Saat Admin menggeser pin di peta, koordinat di form input bawah otomatis terupdate.
                                 $set('latitude', $state['lat']);
                                 $set('longitude', $state['lng']);
-                                
-                                
                             }),
 
                         // --- INPUT KOORDINAT ---
@@ -69,21 +69,21 @@ class RoomEkstraForm
                             ->schema([
                                 TextInput::make('latitude')
                                     ->label('Latitude (Lintang)')
-                                    ->required()
-                                    ->readOnly(), 
-                                
+                                    ->required() // (TITIK PUSAT) Koordinat acuan untuk validasi.
+                                    ->readOnly(),
+
                                 TextInput::make('longitude')
                                     ->label('Longitude (Bujur)')
-                                    ->required()
+                                    ->required() // (TITIK PUSAT) Koordinat acuan untuk validasi.
                                     ->readOnly(),
 
                                 TextInput::make('radius')
-                                    ->label('Radius (Meter)')
+                                    ->label('Radius (Meter)') // (BATAS TOLERANSI) Jika jarak User > Radius ini, maka absen ditolak (Validasi Gagal).
                                     ->numeric()
                                     ->default(20)
                                     ->required(),
-                                    
-                                    
+
+
                             ]),
                     ]),
             ]);

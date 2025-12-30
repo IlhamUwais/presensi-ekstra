@@ -8,7 +8,7 @@ use Filament\Tables\Table;
 // GANTI Form MENJADI Schema (Sesuai Versi Filament Kamu)
 use App\Models\MemberEkstra;
 use Filament\Actions\Action;
-use Filament\Schemas\Schema;
+use Filament\Schemas\Schema; 
 use App\Models\Ekstrakulikuler;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
@@ -16,8 +16,6 @@ use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Notifications\Notification;
 use App\Filament\Siswa\Resources\EkskulResource\Pages;
-use App\Services\EkstraRegistrationService;
-use Illuminate\Validation\ValidationException;
 
 class EkskulResource extends Resource
 {
@@ -26,7 +24,7 @@ class EkskulResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
     protected static ?string $navigationLabel = 'Daftar Ekstrakurikuler';
-
+    
     protected static ?string $recordTitleAttribute = 'name';
 
     // --- PERBAIKAN UTAMA DI SINI ---
@@ -35,7 +33,7 @@ class EkskulResource extends Resource
     {
         // Di versi Schema, biasanya menggunakan ->components([]) atau tetap ->schema([])
         // Kita kosongkan saja array-nya
-        return $schema->components([]);
+        return $schema->components([]); 
     }
 
     public static function table(Table $table): Table
@@ -70,22 +68,22 @@ class EkskulResource extends Resource
                     ->default('-'),
 
 
-
+                
                 TextColumn::make('status_saya')
                     ->label('Status Anda')
                     ->badge()
                     ->getStateUsing(function ($record) {
                         $userId = Auth::id();
                         $member = MemberEkstra::where('user_id', $userId)
-                            ->where('ekstrakulikuler_id', $record->id)
-                            ->first();
-
+                                    ->where('ekstrakulikuler_id', $record->id)
+                                    ->first();
+                        
                         return $member ? strtoupper($member->status ?? 'PENDING') : 'BELUM DAFTAR';
                     })
                     ->colors([
-                        'success' => fn($state) => $state === 'APPROVED',
-                        'warning' => fn($state) => $state === 'PENDING',
-                        'danger'  => fn($state) => $state === 'REJECTED',
+                        'success' => fn ($state) => $state === 'APPROVED',
+                        'warning' => fn ($state) => $state === 'PENDING',
+                        'danger'  => fn ($state) => $state === 'REJECTED',
                         'gray'    => 'BELUM DAFTAR',
                     ]),
             ])
@@ -105,29 +103,24 @@ class EkskulResource extends Resource
                             ->exists();
                     })
                     ->action(function (Ekstrakulikuler $record) {
-                        try {
-                            // Panggil Service untuk validasi jadwal bentrok & daftar
-                            app(EkstraRegistrationService::class)->register(Auth::user(), $record->id);
+                        MemberEkstra::create([
+                            'user_id' => Auth::id(),
+                            'ekstrakulikuler_id' => $record->id,
+                            'status' => 'pending', 
+                        ]);
 
-                            Notification::make()
-                                ->title('Berhasil Mendaftar')
-                                ->success()
-                                ->send();
-                        } catch (ValidationException $e) {
-                            Notification::make()
-                                ->title('Gagal Mendaftar')
-                                ->body($e->validator->errors()->first())
-                                ->danger()
-                                ->send();
-                        }
+                        Notification::make()
+                            ->title('Berhasil Mendaftar')
+                            ->success()
+                            ->send();
                     }),
 
                 // Tombol Info
                 Action::make('info_status')
                     ->label(function (Ekstrakulikuler $record) {
                         $member = MemberEkstra::where('user_id', Auth::id())
-                            ->where('ekstrakulikuler_id', $record->id)
-                            ->first();
+                                    ->where('ekstrakulikuler_id', $record->id)
+                                    ->first();
                         return $member ? 'Status: ' . ucfirst($member->status ?? 'Pending') : '';
                     })
                     ->disabled()
@@ -147,7 +140,7 @@ class EkskulResource extends Resource
             'index' => Pages\ListEkskuls::route('/'),
         ];
     }
-
+    
     public static function canCreate(): bool
     {
         return false;

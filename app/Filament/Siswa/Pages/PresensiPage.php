@@ -20,8 +20,8 @@ class PresensiPage extends Page
     public $schedules;
     public $photoMasuk;
     public $photoPulang;
-    public $userLat;
-    public $userLng;
+    public $userLat; // (INPUT DARI FRONTEND) Variable ini otomatis terisi koordinat Latitude dari GPS HP Siswa via JavaScript/Alpine.js di Blade.
+    public $userLng; // (INPUT DARI FRONTEND) Variable ini otomatis terisi koordinat Longitude dari GPS HP Siswa.
 
     public function mount()
     {
@@ -115,8 +115,8 @@ class PresensiPage extends Page
             app(AttendanceService::class)->clockIn(
                 Auth::user(),
                 $s,
-                $this->userLat,
-                $this->userLng,
+                $this->userLat, // (KIRIM DATA) Koordinat user dikirim ke Service...
+                $this->userLng, // (KIRIM DATA) ...untuk dihitung jaraknya (Validasi Radius) melawan koordinat Lokasi Ekstra.
                 $this->photoMasuk
             );
 
