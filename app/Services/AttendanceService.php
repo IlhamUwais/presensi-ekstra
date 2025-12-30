@@ -2,136 +2,137 @@
 
 namespace App\Services;
 
-use Carbon\Carbon;
+use App\Models\User;
 use App\Models\Schedule;
 use App\Models\Attendance;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class AttendanceService
 {
-    public function __construct(
-        protected GeoFenceService $geoFence
-    ) {}
+    protected GeoFenceService $geoFenceService;
 
-    protected function getTodayAttendance(int $userId, int $scheduleId): Attendance
+    public function __construct(GeoFenceService $geoFenceService)
     {
-        return Attendance::firstOrCreate(
+        $this->geoFenceService = $geoFenceService;
+    }
+
+    public function clockIn(User $user, Schedule $schedule, $lat, $lng, $photoBase64)
+    {
+        // 1. Validasi Lokasi
+        $this->validateLocation($schedule, $lat, $lng);
+
+        // 2. Validasi Foto
+        if (!$photoBase64) {
+            throw ValidationException::withMessages(['photo' => 'Foto wajib diambil untuk absen masuk.']);
+        }
+
+        // 3. Simpan Data
+        $attendance = Attendance::firstOrCreate([
+            'user_id' => $user->id,
+            'schedule_id' => $schedule->id,
+            'date' => today(),
+        ]);
+
+        $attendance->update([
+            'clock_in' => now(),
+            'photo_in' => $this->storePhoto($photoBase64),
+            'lat_in' => $lat,
+            'long_in' => $lng,
+            'status' => 'hadir'
+        ]);
+    }
+
+    public function clockOut(User $user, Schedule $schedule, $lat, $lng, $photoBase64)
+    {
+        $this->validateLocation($schedule, $lat, $lng);
+
+        if (!$photoBase64) {
+            throw ValidationException::withMessages(['photo' => 'Foto wajib diambil untuk absen pulang.']);
+        }
+
+        $attendance = Attendance::where('user_id', $user->id)
+            ->where('schedule_id', $schedule->id)
+            ->whereDate('date', today())
+            ->first();
+
+        if (!$attendance) {
+            throw ValidationException::withMessages(['attendance' => 'Data absen masuk tidak ditemukan.']);
+        }
+
+        $attendance->update([
+            'clock_out' => now(),
+            'photo_out' => $this->storePhoto($photoBase64),
+            'lat_out' => $lat,
+            'long_out' => $lng,
+        ]);
+    }
+
+    public function clockOutHalf(User $user, Schedule $schedule, $lat, $lng)
+    {
+        $this->validateLocation($schedule, $lat, $lng);
+
+        $attendance = Attendance::where('user_id', $user->id)
+            ->where('schedule_id', $schedule->id)
+            ->whereDate('date', today())
+            ->first();
+
+        if (!$attendance) {
+            throw ValidationException::withMessages(['attendance' => 'Data absen masuk tidak ditemukan.']);
+        }
+
+        $attendance->update([
+            'status' => 'setengah',
+            'clock_out' => now(),
+        ]);
+    }
+
+    public function permit(User $user, Schedule $schedule)
+    {
+        Attendance::updateOrCreate(
             [
-                'user_id'     => $userId,
-                'schedule_id' => $scheduleId,
-                'date'        => now()->toDateString(),
+                'user_id' => $user->id,
+                'schedule_id' => $schedule->id,
+                'date' => today(),
             ],
-            [
-                'status' => 'alpha',
-            ]
+            ['status' => 'izin']
         );
     }
 
-    protected function savePhoto(string $base64): string
-    {
-        $data = explode(',', $base64)[1];
-        $path = 'attendance/'.Str::uuid().'.jpg';
-        Storage::disk('public')->put($path, base64_decode($data));
-        return $path;
-    }
+    // --- HELPER FUNCTIONS (Private) ---
 
-    public function clockIn(int $userId, Schedule $schedule, float $lat, float $lng, string $photo): Attendance
+    private function validateLocation(Schedule $schedule, $lat, $lng)
     {
+        if (empty($lat) || empty($lng)) {
+            throw ValidationException::withMessages(['gps' => 'GPS belum aktif atau lokasi tidak terdeteksi.']);
+        }
+
         $room = $schedule->roomEkstra;
+        // Jika tidak ada setting ruangan, anggap valid (atau sesuaikan kebutuhan)
+        if (!$room || !$room->latitude || !$room->longitude) return;
 
-        if (!$this->geoFence->isInsideRadius($lat,$lng,$room->latitude,$room->longitude,$room->radius)) {
-            throw ValidationException::withMessages(['gps'=>'Di luar area']);
-        }
-
-        $attendance = $this->getTodayAttendance($userId,$schedule->id);
-
-        if ($attendance->clock_in) {
-            throw ValidationException::withMessages(['clock_in'=>'Sudah absen']);
-        }
-
-        $attendance->update([
-            'clock_in'=>now(),
-            'photo_in'=>$this->savePhoto($photo),
-            'lat_in'=>$lat,
-            'long_in'=>$lng,
-            'status'=>'hadir'
-        ]);
-
-        return $attendance;
-    }
-
-    public function clockOut(Attendance $attendance, float $lat, float $lng, string $photo): Attendance
-    {
-        if (! $this->canClockOut($attendance->schedule)) {
-            throw ValidationException::withMessages(['clock_out'=>'Belum waktunya pulang']);
-        }
-
-        $attendance->update([
-            'clock_out'=>now(),
-            'photo_out'=>$this->savePhoto($photo),
-            'lat_out'=>$lat,
-            'long_out'=>$lng,
-        ]);
-
-        return $attendance;
-    }
-
-    protected function canClockOut(Schedule $schedule): bool
-    {
-        return now()->greaterThanOrEqualTo(
-            Carbon::createFromFormat('H:i:s',$schedule->end_time)->subMinutes(30)
+        $isInside = $this->geoFenceService->isInsideRadius(
+            $lat,
+            $lng,
+            $room->latitude,
+            $room->longitude,
+            $room->radius ?? 50
         );
-    }
-      public function izinAtauSakit(
-        int $userId,
-        Schedule $schedule,
-        string $status,
-        string $reason
-    ): Attendance {
-        if (! in_array($status, ['izin', 'sakit'])) {
-            throw ValidationException::withMessages([
-                'status' => 'Status tidak valid.',
-            ]);
+
+        if (!$isInside) {
+            throw ValidationException::withMessages(['location' => 'Anda berada di luar radius lokasi absen.']);
         }
-
-        $attendance = $this->getTodayAttendance($userId, $schedule->id);
-
-        $attendance->update([
-            'status' => $status,
-            'reason' => $reason,
-        ]);
-
-        return $attendance;
     }
 
-    public function getAvailableActions(Attendance $attendance, Schedule $schedule): array
+    private function storePhoto($base64)
     {
-        if (! $attendance->clock_in) return ['clock_in','izin'];
+        if (!$base64) return null;
 
-        if ($attendance->clock_in && ! $attendance->clock_out) {
-            return $this->canClockOut($schedule)
-                ? ['clock_out']
-                : ['setengah'];
-        }
-
-        return [];
-    }
-
-    public function setengah(int $userId, Schedule $schedule, string $reason): Attendance
-    {
-        $attendance = $this->getTodayAttendance($userId,$schedule->id);
-
-        if (! $attendance->clock_in) {
-            throw ValidationException::withMessages(['setengah'=>'Belum masuk']);
-        }
-
-        $attendance->update([
-            'status'=>'setengah',
-            'reason'=>$reason
-        ]);
-
-        return $attendance;
+        $data = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64));
+        $path = 'attendance/' . uniqid() . '.jpg';
+        
+        Storage::disk('public')->put($path, $data);
+        
+        return $path;
     }
 }

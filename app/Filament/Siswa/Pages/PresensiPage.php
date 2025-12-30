@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Filament\Notifications\Notification;
 use App\Services\GeoFenceService;
+use App\Services\AttendanceService;
+use Illuminate\Validation\ValidationException;
 
 class PresensiPage extends Page
 {
@@ -26,10 +28,12 @@ class PresensiPage extends Page
         $today = Carbon::now()->locale('id')->dayName;
 
         $this->schedules = Schedule::where('day_of_week', $today)
-            ->whereHas('ekstra.members', fn ($q) =>
+            ->whereHas(
+                'ekstra.members',
+                fn($q) =>
                 $q->where('user_id', Auth::id())
-                  ->where('status', 'approved')
-                  ->where('is_active', 1)
+                    ->where('status', 'approved')
+                    ->where('is_active', 1)
             )
             ->with(['ekstra', 'roomEkstra'])
             ->get();
@@ -45,27 +49,6 @@ class PresensiPage extends Page
             ->where('schedule_id', $schedule->id)
             ->where('user_id', Auth::id())
             ->first();
-    }
-
-    private function validateLocation(Schedule $schedule): bool
-    {
-        if (empty($this->userLat) || empty($this->userLng)) {
-            Notification::make()->danger()
-                ->title('GPS belum aktif')
-                ->send();
-            return false;
-        }
-
-        $room = $schedule->roomEkstra;
-        if (!$room || !$room->latitude || !$room->longitude) return true;
-
-        return app(GeoFenceService::class)->isInsideRadius(
-            $this->userLat,
-            $this->userLng,
-            $room->latitude,
-            $room->longitude,
-            $room->radius ?? 50
-        );
     }
 
     /* =======================
@@ -113,21 +96,14 @@ class PresensiPage extends Page
         PHOTO
     ======================= */
 
-    private function storePhoto($base64)
+    public function savePhotoMasuk($p)
     {
-        if (!$base64) return null;
-
-        $data = base64_decode(
-            preg_replace('#^data:image/\w+;base64,#i', '', $base64)
-        );
-
-        $path = 'attendance/' . uniqid() . '.jpg';
-        Storage::disk('public')->put($path, $data);
-        return $path;
+        $this->photoMasuk = $p;
     }
-
-    public function savePhotoMasuk($p) { $this->photoMasuk = $p; }
-    public function savePhotoPulang($p) { $this->photoPulang = $p; }
+    public function savePhotoPulang($p)
+    {
+        $this->photoPulang = $p;
+    }
 
     /* =======================
         ACTIONS
@@ -135,74 +111,64 @@ class PresensiPage extends Page
 
     public function absenMasuk(Schedule $s)
     {
-        if (!$this->validateLocation($s) || !$this->photoMasuk) return;
+        try {
+            app(AttendanceService::class)->clockIn(
+                Auth::user(),
+                $s,
+                $this->userLat,
+                $this->userLng,
+                $this->photoMasuk
+            );
 
-        $a = Attendance::firstOrCreate([
-            'user_id' => Auth::id(),
-            'schedule_id' => $s->id,
-            'date' => today(),
-        ]);
-
-        $a->update([
-            'clock_in' => now(),
-            'photo_in' => $this->storePhoto($this->photoMasuk),
-            'lat_in' => $this->userLat,
-            'long_in' => $this->userLng,
-            'status' => 'hadir'
-        ]);
-
-        $this->photoMasuk = null;
-
-        Notification::make()->success()
-            ->title('Absen masuk berhasil')
-            ->send();
+            $this->photoMasuk = null;
+            Notification::make()->success()->title('Absen masuk berhasil')->send();
+        } catch (ValidationException $e) {
+            Notification::make()->danger()->title('Gagal Absen')->body($e->getMessage())->send();
+        }
     }
 
     public function absenSetengah(Schedule $s)
     {
-        if (!$this->validateLocation($s)) return;
+        try {
+            app(AttendanceService::class)->clockOutHalf(
+                Auth::user(),
+                $s,
+                $this->userLat,
+                $this->userLng
+            );
 
-        $this->getTodayAttendance($s)->update([
-            'status' => 'setengah',
-            'clock_out' => now(),
-        ]);
-
-        Notification::make()->warning()
-            ->title('Absen setengah dicatat')
-            ->send();
+            Notification::make()->warning()->title('Absen setengah dicatat')->send();
+        } catch (ValidationException $e) {
+            Notification::make()->danger()->title('Gagal Absen')->body($e->getMessage())->send();
+        }
     }
 
     public function absenPulang(Schedule $s)
     {
-        if (!$this->validateLocation($s) || !$this->photoPulang) return;
+        try {
+            app(AttendanceService::class)->clockOut(
+                Auth::user(),
+                $s,
+                $this->userLat,
+                $this->userLng,
+                $this->photoPulang
+            );
 
-        $this->getTodayAttendance($s)->update([
-            'clock_out' => now(),
-            'photo_out' => $this->storePhoto($this->photoPulang),
-            'lat_out' => $this->userLat,
-            'long_out' => $this->userLng,
-        ]);
-
-        $this->photoPulang = null;
-
-        Notification::make()->success()
-            ->title('Absen pulang berhasil')
-            ->send();
+            $this->photoPulang = null;
+            Notification::make()->success()->title('Absen pulang berhasil')->send();
+        } catch (ValidationException $e) {
+            Notification::make()->danger()->title('Gagal Absen')->body($e->getMessage())->send();
+        }
     }
 
     public function izin(Schedule $s)
     {
-        Attendance::updateOrCreate(
-            [
-                'user_id' => Auth::id(),
-                'schedule_id' => $s->id,
-                'date' => today(),
-            ],
-            ['status' => 'izin']
-        );
+        try {
+            app(AttendanceService::class)->permit(Auth::user(), $s);
 
-        Notification::make()->success()
-            ->title('Izin dicatat')
-            ->send();
+            Notification::make()->success()->title('Izin dicatat')->send();
+        } catch (\Exception $e) {
+            Notification::make()->danger()->title('Gagal Izin')->body($e->getMessage())->send();
+        }
     }
 }
