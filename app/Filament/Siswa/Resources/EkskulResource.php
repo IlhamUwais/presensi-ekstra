@@ -50,6 +50,24 @@ class EkskulResource extends Resource
                     ->label('Pembina')
                     ->icon('heroicon-m-user')
                     ->default('-'),
+                TextColumn::make('schedules.day_of_week')
+                    ->label('Hari Ekstra')
+                    ->icon('heroicon-m-user')
+                    ->default('-'),
+                TextColumn::make('schedules.start_time')
+                    ->label('Waktu Mulai')
+                    ->icon('heroicon-m-user')
+                    ->default('-'),
+                TextColumn::make('schedules.end_time')
+                    ->label('Waktu Selesai ')
+                    ->icon('heroicon-m-user')
+                    ->default('-'),
+                TextColumn::make('roomEkstra.name')
+                    ->label('Lokasi')
+                    ->icon('heroicon-m-user')
+                    ->default('-'),
+
+
                 
                 TextColumn::make('status_saya')
                     ->label('Status Anda')
