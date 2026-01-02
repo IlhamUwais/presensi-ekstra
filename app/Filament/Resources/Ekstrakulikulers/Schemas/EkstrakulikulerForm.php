@@ -88,7 +88,7 @@ class EkstrakulikulerForm
                                             ->after('start_time')
                                             // LOGIC VALIDASI BENTROK
                                            ->rules([
-                                                    // FIX: Ganti '$parentRecord' jadi '$record' agar Filament membacanya
+                                                 
                                                 fn (Get $get, $record) => function (string $attribute, $value, Closure $fail) use ($get, $record) {
                                                     
                                                     // 1. Ambil Room ID (Naik level path)
