@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 class PresensiPage extends Page
 {
     protected string $view = 'filament.siswa.pages.presensi';
-
+     protected static ?string $navigationLabel = 'Kelola Absen  ';
     public $schedules;
     public $photoMasuk;
     public $photoPulang;

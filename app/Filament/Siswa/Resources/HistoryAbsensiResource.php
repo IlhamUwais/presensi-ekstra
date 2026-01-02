@@ -53,7 +53,7 @@ class HistoryAbsensiResource extends Resource
 
                 // Pastikan di Model Attendance ada relasi: public function schedule() { return $this->belongsTo(Schedule::class); }
                 TextColumn::make('schedule.ekstra.name')
-                    ->label('Ekstrakurikuler')
+                    ->label('Ekstrakulikuler')
                     ->searchable()
                     ->sortable()
                     ->badge()

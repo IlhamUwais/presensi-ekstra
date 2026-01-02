@@ -160,16 +160,16 @@
                     {{-- Baris 1: Masuk / Setengah --}}
                     <div class="flex gap-2 flex-wrap">
                       @if($canMasuk)
-    <x-filament::button wire:click="absenMasuk({{ $schedule->id }})" color="success">
-        ✅ Absen Masuk
-    </x-filament::button>
-@endif
+                        <x-filament::button wire:click="absenMasuk({{ $schedule->id }})" color="success">
+                            ✅ Absen Masuk
+                        </x-filament::button>
+                    @endif
 
-@if($canSetengah)
-    <x-filament::button wire:click="absenSetengah({{ $schedule->id }})" color="warning">
-        ⚠️ Absen Setengah
-    </x-filament::button>
-@endif
+                    @if($canSetengah)
+                        <x-filament::button wire:click="absenSetengah({{ $schedule->id }})" color="warning">
+                            ⚠️ Absen Setengah
+                        </x-filament::button>
+                    @endif
 
 
                         <x-filament::button

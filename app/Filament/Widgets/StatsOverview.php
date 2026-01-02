@@ -29,7 +29,7 @@ class StatsOverview extends BaseWidget
                 ->chart([7, 2, 10, 3, 15, 4, 17]),
 
             // KARTU 3: Terlambat
-            Stat::make('Terlambat', Attendance::whereDate('created_at', today())->where('status', 'late')->count())
+            Stat::make('Izin/sakit', Attendance::whereDate('created_at', today())->where('status', ['izin', 'sakit'])->count())
                 ->description('Perlu perhatian')
                 ->descriptionIcon('heroicon-m-clock')
                 ->color('warning'), 
