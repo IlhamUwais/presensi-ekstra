@@ -24,10 +24,10 @@
                     <div x-data="gpsTracker()" x-init="startTracking()">
                         <div class="flex items-center gap-2">
                            <span class="text-xs"
-    :class="lat && lng ? 'text-green-600' : 'text-red-600'">
-    <span x-show="lat && lng">📍 GPS Aktif</span>
-    <span x-show="!lat || !lng">📍 GPS Tidak Aktif</span>
-</span>
+                    :class="lat && lng ? 'text-green-600' : 'text-red-600'">
+                    <span x-show="lat && lng">📍 GPS Aktif</span>
+                    <span x-show="!lat || !lng">📍 GPS Tidak Aktif</span>
+                </span>
 
                             <button 
                                 x-show="!isTracking" 
@@ -184,12 +184,14 @@
                     {{-- Baris 2: Izin (Terpisah) --}}
                     <div>
                         <x-filament::button
-                            wire:click="izin({{ $schedule->id }})"
+                            wire:click="mountAction('izinAction', { schedule_id: {{ $schedule->id }} })"
                             color="gray"
                             :disabled="!$canIzin"
                         >
                             📝 Izin
                         </x-filament::button>
+                        <!-- Contoh Baru -->
+
                     </div>
                 </div>
 

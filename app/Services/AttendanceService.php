@@ -98,6 +98,7 @@ class AttendanceService
             ['status' => 'izin']
         );
     }
+    
 
     // --- HELPER FUNCTIONS (Private) ---
 
@@ -135,4 +136,30 @@ class AttendanceService
         
         return $path;
     }
+
+    public function permitWithReason(
+    User $user,
+    Schedule $schedule,
+    string $type,
+    ?string $reason
+) {
+    if (!in_array($type, ['izin', 'sakit'])) {
+        throw ValidationException::withMessages([
+            'type' => 'Jenis izin tidak valid.'
+        ]);
+    }
+
+    Attendance::updateOrCreate(
+        [
+            'user_id' => $user->id,
+            'schedule_id' => $schedule->id,
+            'date' => today(),
+        ],
+        [
+            'status' => $type,
+            'reason' => $reason,
+        ]
+    );
+}
+
 }
