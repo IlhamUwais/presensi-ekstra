@@ -12,16 +12,19 @@ use Filament\Notifications\Notification;
 use App\Services\GeoFenceService;
 use App\Services\AttendanceService;
 use Illuminate\Validation\ValidationException;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 
 class PresensiPage extends Page
 {
     protected string $view = 'filament.siswa.pages.presensi';
-     protected static ?string $navigationLabel = 'Kelola Absen  ';
+    protected static ?string $navigationLabel = 'Kelola Absen  ';
     public $schedules;
     public $photoMasuk;
     public $photoPulang;
-    public $userLat; // (INPUT DARI FRONTEND) Variable ini otomatis terisi koordinat Latitude dari GPS HP Siswa via JavaScript/Alpine.js di Blade.
-    public $userLng; // (INPUT DARI FRONTEND) Variable ini otomatis terisi koordinat Longitude dari GPS HP Siswa.
+    public $userLat; 
+    public $userLng; 
 
     public function mount()
     {
@@ -161,14 +164,33 @@ class PresensiPage extends Page
         }
     }
 
-    public function izin(Schedule $s)
+    public function izinAction(): Action
     {
-        try {
-            app(AttendanceService::class)->permit(Auth::user(), $s);
+        return Action::make('izinAction')
+            ->label('Izin / Sakit')
+            ->modalHeading('Form Izin Presensi')
+            ->modalSubmitActionLabel('Kirim Izin')
+            ->schema([
+                Select::make('status')
+                    ->label('Status')
+                    ->options([
+                        'izin' => 'Izin',
+                        'sakit' => 'Sakit',
+                    ])
+                    ->required(),
+                 
+                Textarea::make('reason')
+                    ->label('Alasan')
+                    ->required()
+                    ->rows(3),
+            ])
+            ->action(function (array $data, array $arguments) {
+                $schedule = Schedule::find($arguments['schedule_id']);
+                if (!$schedule) return;
 
-            Notification::make()->success()->title('Izin dicatat')->send();
-        } catch (\Exception $e) {
-            Notification::make()->danger()->title('Gagal Izin')->body($e->getMessage())->send();
-        }
+                app(AttendanceService::class)->permit(Auth::user(), $schedule, $data['status'], $data['reason']);
+
+                Notification::make()->success()->title('Status izin berhasil dicatat')->send();
+            });
     }
 }
