@@ -188,11 +188,7 @@ class PresensiPage extends Page
                 $schedule = Schedule::find($arguments['schedule_id']);
                 if (!$schedule) return;
 
-<<<<<<< HEAD
-                app(AttendanceService::class)->permit(Auth::user(), $schedule, $data['status'], $data['reason']);
-=======
                 app(AttendanceService::class)->permitWithReason(Auth::user(), $schedule, $data['status'], $data['reason']);
->>>>>>> eksperimenbos
 
                 Notification::make()->success()->title('Status izin berhasil dicatat')->send();
             });
