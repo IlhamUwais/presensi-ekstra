@@ -17,6 +17,29 @@ class AttendanceService
         $this->geoFenceService = $geoFenceService;
     }
 
+       private function validateLocation(Schedule $schedule, $lat, $lng)
+    {
+        if (empty($lat) || empty($lng)) {
+            throw ValidationException::withMessages(['gps' => 'GPS belum aktif atau lokasi tidak terdeteksi.']);
+        }
+
+        $room = $schedule->roomEkstra;
+        // Jika tidak ada setting ruangan, anggap valid (atau sesuaikan kebutuhan)
+        if (!$room || !$room->latitude || !$room->longitude) return;
+
+        $isInside = $this->geoFenceService->isInsideRadius(
+            $lat,
+            $lng,
+            $room->latitude,
+            $room->longitude,
+            $room->radius ?? 50
+        );
+
+        if (!$isInside) {
+            throw ValidationException::withMessages(['location' => 'Anda berada di luar radius lokasi absen.']);
+        }
+    }
+
     public function clockIn(User $user, Schedule $schedule, $lat, $lng, $photoBase64)
     {
         // 1. Validasi Lokasi
@@ -102,28 +125,7 @@ class AttendanceService
 
     // --- HELPER FUNCTIONS (Private) ---
 
-    private function validateLocation(Schedule $schedule, $lat, $lng)
-    {
-        if (empty($lat) || empty($lng)) {
-            throw ValidationException::withMessages(['gps' => 'GPS belum aktif atau lokasi tidak terdeteksi.']);
-        }
-
-        $room = $schedule->roomEkstra;
-        // Jika tidak ada setting ruangan, anggap valid (atau sesuaikan kebutuhan)
-        if (!$room || !$room->latitude || !$room->longitude) return;
-
-        $isInside = $this->geoFenceService->isInsideRadius(
-            $lat,
-            $lng,
-            $room->latitude,
-            $room->longitude,
-            $room->radius ?? 50
-        );
-
-        if (!$isInside) {
-            throw ValidationException::withMessages(['location' => 'Anda berada di luar radius lokasi absen.']);
-        }
-    }
+ 
 
     private function storePhoto($base64)
     {

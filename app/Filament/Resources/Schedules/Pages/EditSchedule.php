@@ -10,10 +10,15 @@ class EditSchedule extends EditRecord
 {
     protected static string $resource = ScheduleResource::class;
 
-    protected function getHeaderActions(): array
+    public function getHeaderActions(): array
     {
         return [
             DeleteAction::make(),
         ];
+    }
+
+    public function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
     }
 }
