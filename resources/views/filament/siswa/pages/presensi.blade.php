@@ -184,7 +184,8 @@
                     {{-- Baris 2: Izin (Terpisah) --}}
                     <div>
                         <x-filament::button
-                            wire:click="mountAction('izinAction', { schedule_id: {{ $schedule->id }} })">
+                            wire:click="mountAction('izinAction', { schedule_id: {{ $schedule->id }} })" 
+
                             color="gray"
                             :disabled="!$canIzin"
                         >
