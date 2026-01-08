@@ -17,6 +17,29 @@ class AttendanceService
         $this->geoFenceService = $geoFenceService;
     }
 
+       private function validateLocation(Schedule $schedule, $lat, $lng)
+    {
+        if (empty($lat) || empty($lng)) {
+            throw ValidationException::withMessages(['gps' => 'GPS belum aktif atau lokasi tidak terdeteksi.']);
+        }
+
+        $room = $schedule->roomEkstra;
+        // Jika tidak ada setting ruangan, anggap valid (atau sesuaikan kebutuhan)
+        if (!$room || !$room->latitude || !$room->longitude) return;
+
+        $isInside = $this->geoFenceService->isInsideRadius(
+            $lat,
+            $lng,
+            $room->latitude,
+            $room->longitude,
+            $room->radius ?? 50
+        );
+
+        if (!$isInside) {
+            throw ValidationException::withMessages(['location' => 'Anda berada di luar radius lokasi absen.']);
+        }
+    }
+
     public function clockIn(User $user, Schedule $schedule, $lat, $lng, $photoBase64)
     {
         // 1. Validasi Lokasi
@@ -98,31 +121,11 @@ class AttendanceService
             ['status' => 'izin']
         );
     }
+    
 
     // --- HELPER FUNCTIONS (Private) ---
 
-    private function validateLocation(Schedule $schedule, $lat, $lng)
-    {
-        if (empty($lat) || empty($lng)) {
-            throw ValidationException::withMessages(['gps' => 'GPS belum aktif atau lokasi tidak terdeteksi.']);
-        }
-
-        $room = $schedule->roomEkstra;
-        // Jika tidak ada setting ruangan, anggap valid (atau sesuaikan kebutuhan)
-        if (!$room || !$room->latitude || !$room->longitude) return;
-
-        $isInside = $this->geoFenceService->isInsideRadius(
-            $lat,
-            $lng,
-            $room->latitude,
-            $room->longitude,
-            $room->radius ?? 50
-        );
-
-        if (!$isInside) {
-            throw ValidationException::withMessages(['location' => 'Anda berada di luar radius lokasi absen.']);
-        }
-    }
+ 
 
     private function storePhoto($base64)
     {
@@ -135,4 +138,30 @@ class AttendanceService
         
         return $path;
     }
+
+    public function permitWithReason(
+    User $user,
+    Schedule $schedule,
+    string $type,
+    ?string $reason
+) {
+    if (!in_array($type, ['izin', 'sakit'])) {
+        throw ValidationException::withMessages([
+            'type' => 'Jenis izin tidak valid.'
+        ]);
+    }
+
+    Attendance::updateOrCreate(
+        [
+            'user_id' => $user->id,
+            'schedule_id' => $schedule->id,
+            'date' => today(),
+        ],
+        [
+            'status' => $type,
+            'reason' => $reason,
+        ]
+    );
+}
+
 }

@@ -184,12 +184,15 @@
                     {{-- Baris 2: Izin (Terpisah) --}}
                     <div>
                         <x-filament::button
-                            wire:click="izin({{ $schedule->id }})"
+                            wire:click="mountAction('izinAction', { schedule_id: {{ $schedule->id }} })" 
+
                             color="gray"
                             :disabled="!$canIzin"
                         >
                             📝 Izin
                         </x-filament::button>
+                        <!-- Contoh Baru -->
+
                     </div>
                 </div>
 
