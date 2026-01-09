@@ -111,6 +111,29 @@
                 <div class="role-desc">Pengelola Ekskul</div>
             </a>
         </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    @foreach ($ekstras as $ekstra)
+        <div class="border rounded-lg p-4 shadow">
+            <h3 class="font-bold text-lg">
+                {{ $ekstra->name }}
+            </h3>
+
+            <p class="text-sm text-gray-600">
+                Pembina: {{ $ekstra->pembina->name ?? '-' }}
+            </p>
+
+            @foreach ($ekstra->schedules as $schedule)
+                <div class="mt-2 text-sm">
+                    <p>Hari: {{ $schedule->day_of_week }}</p>
+                    <p>Jam: {{ $schedule->start_time }} - {{ $schedule->end_time }}</p>
+                    <p>Ruangan: {{ $schedule->roomEkstra->name ?? '-' }}</p>
+                </div>
+            @endforeach
+        </div>
+    @endforeach
+</div>
+
         
         <div class="info-box">
             <h3>⚠️ Testing dengan Ngrok:</h3>
