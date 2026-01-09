@@ -116,7 +116,7 @@
             <h3>⚠️ Testing dengan Ngrok:</h3>
             <ul>
                 <li>• Gunakan URL ngrok (https://) untuk akses GPS</li>
-                <li>• <strong>Admin:</strong> username: admin@example.com | password: password</li>
+                <li>• <strong>Admin:</strong> username: admin | password: password</li>
                 <li>• <strong>Siswa:</strong> Login dengan akun siswa terdaftar</li>
                 <li>• <strong>Pembina:</strong> Login dengan akun pembina</li>
             </ul>

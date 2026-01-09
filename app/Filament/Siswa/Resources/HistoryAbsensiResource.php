@@ -60,14 +60,17 @@ class HistoryAbsensiResource extends Resource
                     ->color('info'),
 
                 TextColumn::make('clock_in')
-                    ->label('Masuk')
-                    ->time('H:i')
-                    ->default('-'),
+                        ->label('Masuk')
+                        ->formatStateUsing(function ($state) {
+                            return $state ? \Carbon\Carbon::parse($state)->format('H:i') : '-';
+                        }),
 
                 TextColumn::make('clock_out')
                     ->label('Pulang')
-                    ->time('H:i')
-                    ->default('-'),
+                    ->formatStateUsing(function ($state) {
+                        return $state ? \Carbon\Carbon::parse($state)->format('H:i') : '-';
+                    }),
+                    
 
                 TextColumn::make('status')
                     ->label('Status')
